@@ -26,16 +26,15 @@ def part1():
 
 
 def part2():
-    
     with open("inputs/day3", "r") as f:
         sum = 0
         for lines in chunks(f.readlines(),3):
             lines = [l.strip() for l in lines]
             common = list(set(lines[0]) & set(lines[1]) & set(lines[2]))[0]
             sum += prio(common)
-            print(common, sum)
+            # print(common, sum)
 
 
-# part1()
-part2()
+part1()
+# part2()
 
