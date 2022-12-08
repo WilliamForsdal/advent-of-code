@@ -1,31 +1,23 @@
 
-
-
-def part1(stream):
+def part1(text):
     idx = 0
     while True:
-        sett = set(stream[idx:idx+4])
-        if len(sett) == 4:
+        if len(set(text[idx:idx+4])) == 4:
             print(f"Part1: {idx+4}")
             break
         idx += 1
 
-
-def part2(stream):
+def part2(text):
     idx = 0
     while True:
-        sett = set(stream[idx:idx+14])
-        if len(sett) == 14:
+        if len(set(text[idx:idx+14])) == 14:
             print(f"Part2: {idx+14}")
             break
         idx += 1
 
-
-
-string = ""
+s = ""
 with open("inputs/day6") as f:
-    string = f.readline()
+    s = f.readline()
 
-part1(string)
-part2(string)
-
+part1(s)
+part2(s)
