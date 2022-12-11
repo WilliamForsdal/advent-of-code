@@ -1,5 +1,4 @@
 
-
 class Monkey:
     def __init__(self, idx: 0, lines: list[str], worry_div: int = 3):
         self.idx: int = idx
@@ -19,6 +18,9 @@ class Monkey:
 
             # relief
             item = item // self.worry_div # integer divide
+            
+            if item > 9699690:
+                item %= 9699690
 
             # test and throw
             if (item % self.divisible_by) == 0:
@@ -53,8 +55,6 @@ class Monkey:
 def part1(monkeys):
     
     for round in range(0,20):
-        # print(round)
-
         for monkey in monkeys:
             monkey.business(monkeys)
 
@@ -63,9 +63,7 @@ def part1(monkeys):
         
 
 def part2(monkeys):
-    for round in range(0,10000):
-        print(round)
-
+    for round in range(1,10001):
         for monkey in monkeys:
             monkey.business(monkeys)
 
@@ -106,4 +104,4 @@ for n in range(0, len(lines), 7):
     idx += 1
 
 
-# part1(monkeys)
+part2(monkeys)
