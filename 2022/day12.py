@@ -16,6 +16,10 @@ class Grid:
             self.nodes.append(nodes_row)
             r += 1
 
+    def all_nodes(self):
+        for r in self.nodes:
+            for c in r:
+                yield c
 
 class Node:
     def __init__(self, grid: "Grid", row: int, col: int, height: int):
@@ -24,39 +28,90 @@ class Node:
         self.col: int = col
         self.height: int = height
 
+    def neighbors(self):
+        return [n for n in [self.up, self.right, self.down, self.left] if n is not None]
+
     @property
     def up(self):
         if self.row == 0:
             return None
-        return self.grid.nodes[self.row-1][self.col]
+        node = self.grid.nodes[self.row-1][self.col]
+        if node.height - self.height > 1:
+            return None
+        return node
 
     @property
     def down(self):
         if self.row+1 >= self.grid.height:
             return None
-        return self.grid.nodes[self.row+1][self.col]
+        node = self.grid.nodes[self.row+1][self.col]
+        if node.height - self.height > 1:
+            return None
+        return node
 
     @property
     def left(self):
         if self.col == 0:
             return None
-        return self.grid.nodes[self.row][self.col-1]
+        node = self.grid.nodes[self.row][self.col-1]
+        if node.height - self.height > 1:
+            return None
+        return node
 
     @property
     def right(self):
         if self.col + 1 >= self.grid.width:
             return None
-        return self.grid.nodes[self.row][self.col + 1]
+        node = self.grid.nodes[self.row][self.col + 1]
+        if node.height - self.height > 1:
+            return None
+        return node
+
+    def shortest_path_to(self, path: list["Node"], dest: "Node"):
+        if self in path:
+            return None
+        path.append(self)
+        print(self.height, self.row, self.col)
+        if self.right == dest:
+            return path + [self.right]
+        if self.down == dest:
+            return path + [self.down]
+        if self.up == dest:
+            return path + [self.up]
+        if self.left == dest:
+            return path + [self.left]
+
+        right = None
+        up = None
+        down = None
+        left = None
+
+        if self.right is not None and self.right not in path:
+            right = self.right.shortest_path_to(path.copy(), dest)
+        if self.up is not None and self.up not in path:
+            up = self.up.shortest_path_to(path.copy(), dest)
+        if self.down is not None and self.down not in path:
+            down = self.down.shortest_path_to(path.copy(), dest)
+        if self.left is not None and self.left not in path:
+            left = self.left.shortest_path_to(path.copy(), dest)
+
+        paths = [p for p in [right, up, down, left] if p is not None]
+        if len(paths) == 0:
+            return None
+
+        paths.sort(key=len)
+        return paths[0]
 
 
 def part1(grid: "Grid"):
-    path: list["Node"] = []
+    deez = [n for n in grid.all_nodes() if n.height == ord("d")]
     start = grid.nodes[20][0]
     end = grid.nodes[20][139]
-    
-    # if can't move towards 
 
-    
+    # if can't move towards
+    path = []
+    shortest = start.shortest_path_to(path, end)
+    print("part1:", len(shortest))
 
 
 lines = []
