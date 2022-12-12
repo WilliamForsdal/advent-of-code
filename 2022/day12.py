@@ -21,6 +21,7 @@ class Grid:
             for c in r:
                 yield c
 
+
 class Node:
     def __init__(self, grid: "Grid", row: int, col: int, height: int):
         self.grid: "Grid" = grid
@@ -103,10 +104,8 @@ class Node:
         return paths[0]
 
 
-def part1(grid: "Grid"):
+def part1(grid: "Grid", start, end):
     deez = [n for n in grid.all_nodes() if n.height == ord("d")]
-    start = grid.nodes[20][0]
-    end = grid.nodes[20][139]
 
     # if can't move towards
     path = []
@@ -118,15 +117,27 @@ lines = []
 with open("inputs/day12") as f:
     lines = [l.strip() for l in f.readlines()]
 
-
+start = (0, 0)
+end = (0, 0)
 raw_grid = []
+row = 0
 for l in lines:
     row = []
+    col = 0
     for c in l:
-        row.append(ord(c))
+        if c == "S":
+            row.append(ord("a"))
+            start = (row, col)
+        elif c == "E":
+            row.append(ord("z"))
+            end = (row, col)
+        else:
+            row.append(ord(c))
+        col += 1
+    row += 1
 
     raw_grid.append(row)
 
 grid = Grid(raw_grid)
 
-part1(grid)
+part1(grid, start, end)
