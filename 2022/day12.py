@@ -1,3 +1,5 @@
+import sys
+
 
 class Grid:
     def __init__(self, raw_grid: list[list[int]]):
@@ -21,6 +23,15 @@ class Grid:
             for c in r:
                 yield c
 
+    def print(self):
+
+        with open("grid.txt", "w") as f:
+            for row in self.nodes:
+                f.write(" ".join(
+                    [(f"{n.distance:3}" if n.distance < 999 else f' # ') for n in row]))
+                f.write("\n")
+        print("Saved grid.txt")
+
 
 class Node:
     def __init__(self, grid: "Grid", row: int, col: int, height: int):
@@ -28,9 +39,11 @@ class Node:
         self.row: int = row
         self.col: int = col
         self.height: int = height
+        self.distance = 99999  # not calculated
+        self.visited = False
 
     def neighbors(self):
-        return [n for n in [self.up, self.right, self.down, self.left] if n is not None]
+        return [n for n in [self.right, self.up, self.down, self.left] if n is not None]
 
     @property
     def up(self):
@@ -68,50 +81,42 @@ class Node:
             return None
         return node
 
-    def shortest_path_to(self, path: list["Node"], dest: "Node"):
+    def update_neighbors(self, path: list["Node"]):
+        if len(path) > 999:
+            return
         if self in path:
-            return None
+            return
+        self.visited = True
         path.append(self)
-        print(self.height, self.row, self.col)
-        if self.right == dest:
-            return path + [self.right]
-        if self.down == dest:
-            return path + [self.down]
-        if self.up == dest:
-            return path + [self.up]
-        if self.left == dest:
-            return path + [self.left]
-
-        right = None
-        up = None
-        down = None
-        left = None
-
-        if self.right is not None and self.right not in path:
-            right = self.right.shortest_path_to(path.copy(), dest)
-        if self.up is not None and self.up not in path:
-            up = self.up.shortest_path_to(path.copy(), dest)
-        if self.down is not None and self.down not in path:
-            down = self.down.shortest_path_to(path.copy(), dest)
-        if self.left is not None and self.left not in path:
-            left = self.left.shortest_path_to(path.copy(), dest)
-
-        paths = [p for p in [right, up, down, left] if p is not None]
-        if len(paths) == 0:
-            return None
-
-        paths.sort(key=len)
-        return paths[0]
+        for n in self.neighbors():
+            if n.distance > self.distance + 1:
+                n.distance = self.distance + 1
+                n.update_neighbors(path)
+        if path.pop() != self:
+            raise Exception()
 
 
-def part1(grid: "Grid", start, end):
-    deez = [n for n in grid.all_nodes() if n.height == ord("d")]
+def part1(grid: "Grid", start: "Node", end: "Node"):
 
-    # if can't move towards
+    start.distance = 0
+    # grid.print()
     path = []
-    shortest = start.shortest_path_to(path, end)
-    print("part1:", len(shortest))
+    start.update_neighbors(path)
+    grid.print()
+    while not end.visited:
+        edges = [n for n in grid.all_nodes() if len(
+            [m for m in n.neighbors() if m.distance >= 99999]) > 0]
+        # unvisited = [n for n in grid.all_nodes() if not n.visited]
+        for n in edges:
+            path = []
+            n.update_neighbors(path)
 
+    print("part1:", end.distance)
+    # 526 too high
+
+
+# print(sys.getrecursionlimit())
+sys.setrecursionlimit(2500)
 
 lines = []
 with open("inputs/day12") as f:
@@ -122,22 +127,24 @@ end = (0, 0)
 raw_grid = []
 row = 0
 for l in lines:
-    row = []
+    r = []
     col = 0
     for c in l:
         if c == "S":
-            row.append(ord("a"))
+            r.append(ord("a"))
             start = (row, col)
         elif c == "E":
-            row.append(ord("z"))
+            r.append(ord("z"))
             end = (row, col)
         else:
-            row.append(ord(c))
+            r.append(ord(c))
         col += 1
     row += 1
 
-    raw_grid.append(row)
+    raw_grid.append(r)
 
 grid = Grid(raw_grid)
 
+start = grid.nodes[start[0]][start[1]]
+end = grid.nodes[end[0]][end[1]]
 part1(grid, start, end)
