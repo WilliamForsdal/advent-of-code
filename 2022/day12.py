@@ -81,8 +81,8 @@ class Node:
             return None
         return node
 
-    def update_neighbors(self, path: list["Node"]):
-        if len(path) > 999:
+    def update_neighbors(self, path: list["Node"], max: int = 500):
+        if len(path) > max:
             return
         if self in path:
             return
@@ -96,27 +96,33 @@ class Node:
             raise Exception()
 
 
-def part1(grid: "Grid", start: "Node", end: "Node"):
-
+def part1(raw_grid, start, end):
+    grid = Grid(raw_grid)
+    start = grid.nodes[start[0]][start[1]]
+    end = grid.nodes[end[0]][end[1]]
     start.distance = 0
-    # grid.print()
     path = []
     start.update_neighbors(path)
-    grid.print()
-    while not end.visited:
-        edges = [n for n in grid.all_nodes() if len(
-            [m for m in n.neighbors() if m.distance >= 99999]) > 0]
-        # unvisited = [n for n in grid.all_nodes() if not n.visited]
-        for n in edges:
-            path = []
-            n.update_neighbors(path)
-
     print("part1:", end.distance)
-    # 526 too high
 
 
-# print(sys.getrecursionlimit())
-sys.setrecursionlimit(2500)
+def part2(raw_grid, end):
+    minimum = 482
+    # Searching all 'a's takes a minute or two.
+    # for start_row in range(0, len(raw_grid)):
+    for _ in range(0,1): # to
+        # print ("checking", start_row+1, "of", len(raw_grid))
+        grid = Grid(raw_grid)
+        start = grid.nodes[19][0]
+        start.distance = 0
+        start.update_neighbors([], minimum)
+        end_node = grid.nodes[end[0]][end[1]]
+        # print("distance:", end_node.distance)
+        if end_node.distance < minimum:
+            minimum = end_node.distance
+
+    print("Part2:", minimum)
+
 
 lines = []
 with open("inputs/day12") as f:
@@ -143,8 +149,5 @@ for l in lines:
 
     raw_grid.append(r)
 
-grid = Grid(raw_grid)
-
-start = grid.nodes[start[0]][start[1]]
-end = grid.nodes[end[0]][end[1]]
-part1(grid, start, end)
+part1(raw_grid, start, end)
+part2(raw_grid, end)
