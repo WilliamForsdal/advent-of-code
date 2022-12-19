@@ -1,5 +1,5 @@
-import random
-
+import itertools
+import functools
 
 class Valve:
     def __init__(self, name, rate):
@@ -12,7 +12,7 @@ class Valve:
     def shortest_path_to(self, other, path: list) -> list:
         if self in path:
             return None
-        if len(path) >= 30:
+        if len(path) > 30:
             return None
 
         path.append(self)
@@ -34,69 +34,80 @@ class Valve:
         return self.name + f" ({self.rate})"
 
 
-def part1(valves: list[Valve]):
-    #
+def part1(valves: list[Valve], shortest_paths: list[list[Valve]]):
     start = next(v for v in valves if v.name == "AA")
 
     openable = sorted([v for v in valves if v.rate > 0],
                       key=lambda x: x.rate, reverse=True)
-    # print(f"The {len(openable)} valves are:", [f"{v.name}:{v.rate}" for v in openable])
-
-    shortest_paths: list[list[Valve]] = []
-    print("Calculating shortest paths...")
-    for valve1 in (openable + [start]):
-        # print(valve1.name)
-        for valve2 in openable:
-            if valve1 == valve2:
-                continue
-            shortest = valve1.shortest_path_to(valve2, [])
-            shortest_paths.append(shortest)
-
-    from_aa = [p for p in shortest_paths if p[0] == start]
-    from_bv = [p for p in shortest_paths if p[0].name == "BV"]
-
-    for path in from_aa:
-        print(path)
-
-    t = 30
-    max_score = sum([v.rate * t for v in openable]) 
-    # Max score is 5940 if all valves are opened instantly. Too high of course.
-    # 1132 is too low!
-
-    opened = []
-    current = start
-    total_pressure_released = 0
-    path_to_walk = []
-    while t >= 0:
-        best_pressure_release = 0
-        best_path = None
-        for path in [p for p in shortest_paths if p[0] == current and p[-1] not in opened]:
-            time = len(path) # -1 because we don't count the first element, and + 1 to open the valve.
-            if (t - time) <= 0:
-                continue
-            pressure = path[-1].rate * (t - time)
-            if pressure > best_pressure_release:
-                best_pressure_release = pressure
-                best_path = path
-        
-        if best_path is None:
-            print(t, best_pressure_release, pressure, path_to_walk)
-            break    
-        total_pressure_released += best_pressure_release
-        t -= len(best_path)
-        print(f"Walked {best_path} which released {best_pressure_release} pressure")
-        current = best_path[-1]
-        opened.append(current)
-        path_to_walk += best_path
+    unopened = openable.copy()
+    best = search(start, unopened, 30, shortest_paths)
+    print(f"Part1:  {best}")
     
-    print("part1:", total_pressure_released)
+
+def part2(valves: list[Valve], shortest_paths: list[list[Valve]]):
+    start = next(v for v in valves if v.name == "AA")
+
+    openable = sorted([v for v in valves if v.rate > 0],
+                      key=lambda x: x.rate, reverse=True)
+    unopened = openable.copy()
+    print("Calculating best routes.")
+    # for num_elephant_valves in range(1, len(valves)//2):
+    #     print(f"At {num_elephant_valves}... {count}")
+    
+    import multiprocessing as mp
+    num_cpus = mp.cpu_count()
+
+    pool = mp.Pool(num_cpus)
+
+    all = list(itertools.combinations(openable, 8))
+
+    def elephant_search(elephant_valves_lst):
+        best = 0
+        for elephant_valves in elephant_valves_lst:
+            my_valves = [v for v in valves if v not in elephant_valves]
+            elephant_score = search(start, list(elephant_valves), 26, shortest_paths)
+            my_score = search(start, my_valves, 26, shortest_paths)
+            if best < elephant_score + my_score:
+                best = elephant_score + my_score
+                print("Found new best:", best)
+
+    results = [pool.apply(elephant_search, args=e) for e in [all[i:i+num_cpus] for i in range(0, len(all), num_cpus)]]
+        
+    print(f"Part2:  {max(results)}")
+    # 1921 too low
+    # 2102 too high
+
+@functools.cache
+def search(current: Valve, unopened: list[Valve], time_left: int, shortest_paths: list[list[Valve]]) -> int:
+    unopened = unopened.copy()
+    if current in unopened:
+        unopened.remove(current)
+    best = 0
+    for v in unopened:
+        # if current.name == "AA":
+        #     print(f"Checking from {current} to {v}")
+
+        for path in [p for p in shortest_paths if p[0] == current and p[-1] == v]:
+            # -1 because we don't count the first element, and + 1 to open the valve.
+            time = len(path)
+            # Equals because it's only worth anything if it actually has time to psssssh out steam
+            if (time_left - time) <= 0:
+                continue
+
+            # If we walk down this path, we release this valve and the best from this valve.
+            release = (time_left - time) * v.rate
+            release += search(path[-1], unopened,
+                              time_left - time, shortest_paths)
+            if release > best:
+                best = release
+                # print(f"New best: from {current} to {v} is {best}")
+
+    return best
+
 
 # Define a cost function for steps
 def cost(unopened: list[Valve]):
     return sum([v.rate for v in unopened])
-
-        
-
 
 
 lines = open("inputs/day16").read().strip().splitlines()
@@ -120,12 +131,20 @@ for valve in valves:
         valve.tunnels.append(leads_to)
 
 
-# print mermaid diagram
-# for valve in valves:
-#     for tunnel in valve.tunnels:
-#         print(f"    {valve.name}_{valve.rate} --> {tunnel.name}_{tunnel.rate}")
+start = next(v for v in valves if v.name == "AA")
+openable = sorted([v for v in valves if v.rate > 0], key=lambda x: x.rate, reverse=True)
+unopened = openable.copy()
+shortest_paths: list[list[Valve]] = []
+print("Calculating shortest paths...")
+for valve1 in (openable + [start]):
+    for valve2 in openable:
+        if valve1 == valve2:
+            continue
+        shortest = valve1.shortest_path_to(valve2, [])
+        shortest_paths.append(shortest)
 
-part1(valves)
+# part1(valves, shortest_paths)
+part2(valves, shortest_paths)
 
 
 # ZX, BV, HR, PD, FN
