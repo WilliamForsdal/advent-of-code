@@ -112,23 +112,22 @@ impl Simulation {
         }
     }
 
-    fn print_cave(&self, num_rows: i32) {
+    fn print_cave(&self, idx: usize, len: usize) {
         println!("The cave now looks like this:");
-        let mut num_rows = num_rows;
-        for (i, row) in ((self.cave[0..(self.highest_point + 4)]).iter().enumerate()).rev() {
-            print!("row {i:5}: ");
-            for c in row {
-                if *c == 0 {
+
+        for r in (idx..idx + len).rev() {
+            if r >= self.cave.len() {
+                continue;
+            }
+            print!("row {r:5}: ");
+            for c in self.cave[r] {
+                if c == 0 {
                     print!(".")
                 } else {
                     print!("#");
                 }
             }
             println!("");
-            num_rows -= 1;
-            if num_rows == 0 {
-                break;
-            }
         }
         println!("");
     }
@@ -250,7 +249,7 @@ fn part1(pushes: Vec<i8>) {
 }
 
 fn part2(pushes: Vec<i8>) {
-    let mut sim = Simulation::new(pushes);
+    let mut sim = Simulation::new(pushes.clone());
     let mut total_height = 0;
 
     for _ in 0..2022 {
@@ -258,6 +257,12 @@ fn part2(pushes: Vec<i8>) {
     }
     println!("Part1: {}", sim.highest_point + 1);
 
+    for _ in 0..10000 {
+        sim.step();
+    }
+
+    let mut cycle_start_idx = 0;
+    let mut cycle_start_row = None;
     let mut height_per_cycle = 0;
     let mut steps_per_cycle = 0;
     let mut found = false;
@@ -267,36 +272,62 @@ fn part2(pushes: Vec<i8>) {
             break;
         }
         sim.step();
-        for r2_idx in (0..(sim.highest_point - 100)).rev() {
-            if sim.cave[sim.highest_point] == sim.cave[r2_idx] {
-                let y_diff = sim.highest_point - r2_idx;
-                found = true;
-                // print!("at {r2_idx}? ");
-                for offset in 1..y_diff {
-                    if sim.cave[sim.highest_point - offset] != sim.cave[r2_idx - offset] {
-                        found = false;
-                        // println!("No, only {offset} alike.");
+
+        for r1_idx in 0..sim.highest_point {
+            for r2_idx in (r1_idx + 100)..sim.highest_point {
+                if sim.cave[r1_idx] == sim.cave[r2_idx] {
+                    let mut r1_idx_i = r1_idx + 1;
+                    let mut r2_idx_i = r2_idx + 1;
+                    let mut diff = 0;
+                    while sim.cave[r1_idx_i] == sim.cave[r2_idx_i] {
+                        r1_idx_i += 1;
+                        r2_idx_i += 1;
+                        diff += 1;
+                        if r2_idx_i >= sim.highest_point {
+                            break;
+                        }
+                    }
+                    if diff >= (r2_idx - r1_idx) {
+                        height_per_cycle = r2_idx - r1_idx;
+                        cycle_start_idx = r1_idx;
+                        cycle_start_row = Some(sim.cave[cycle_start_idx]);
+                        println!(
+                            "Found height: {height_per_cycle} starting from idx {cycle_start_idx}"
+                        );
+                        found = true;
                         break;
                     }
                 }
-                if found {
-                    println!("YES!!!");
-                    break;
-                }
+            }
+            if found {
+                break;
             }
         }
     }
-    if !found {
-        panic!();
+    // Restart the simulation to find exactly which step the cycle repeats
+    let mut sim = Simulation::new(pushes.clone());
+    let cycle_start_row = cycle_start_row.unwrap();
+    println!("{cycle_start_row:?}");
+    while cycle_start_row != sim.cave[cycle_start_idx] {
+        sim.step();
     }
+    println!("now find how many steps to repeat");
+    let mut steps = 0;
+    while cycle_start_row != sim.cave[cycle_start_idx + height_per_cycle] {
+        sim.step();
+        steps += 1;
+    }
+    println!("Steps per cycle is {steps}");
+    steps_per_cycle = steps;
 
-    while sim.step < (1000000000000 - steps_per_cycle) {
-        sim.step -= steps_per_cycle;
+    let mut skip_steps = 0;
+    while sim.step + skip_steps < (1000000000000 - steps_per_cycle) {
+        skip_steps += steps_per_cycle;
         total_height += height_per_cycle;
-    }
-    while sim.step < 1000000000000 {
+    }while sim.step + skip_steps < 1000000000000 {
         sim.step();
     }
 
-    println!("Part2: {}", total_height + sim.highest_point)
+    println!("Part2: {}", total_height + sim.highest_point + 1); // Don't forget + 1 :)
+
 }
