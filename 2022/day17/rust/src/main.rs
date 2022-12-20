@@ -53,32 +53,9 @@ fn run(pushes: &Vec<i32>, part2: bool) {
     let mut push_idx = 0;
     let mut highest_point = 0;
 
-    let mut store_offset = 0;
     let max = if part2 { 1000000000000 } else { 2022 };
     for num_block in 0..max {
-        if num_block % 1000000 == 0 {
-            println!("{:5}", (num_block as f64) / (max as f64));
-        }
-        if part2 && highest_point > CAVE_MAX_HEIGHT {
-            const SHIFT_DOWN: usize = 2000;
-            // Shift everything down.
-            for i in 0..CAVE_HEIGHT {
-                for w in 0..CAVE_WIDTH {
-                    let cell = if i + SHIFT_DOWN < CAVE_HEIGHT {
-                        cave[i + SHIFT_DOWN][w]
-                    } else {
-                        0
-                    };
-                    cave[i][w] = cell;
-                }
-            }
-            store_offset += SHIFT_DOWN;
-            highest_point -= SHIFT_DOWN;
-        }
 
-        if num_block > 5 {
-            // break;
-        }
         // Spawn block
         let mut shape = get_shape(num_block % 5);
         let mut shape_y_offset = highest_point + 3; // spawn block 3 steps above last highest
@@ -137,7 +114,7 @@ fn run(pushes: &Vec<i32>, part2: bool) {
         // println!("");
     }
     if part2 {
-        println!("Part2: {}", highest_point + store_offset);
+        println!("Part2: {}", highest_point);
     } else {
         println!("Part1: {highest_point}");
     }
