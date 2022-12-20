@@ -21,7 +21,7 @@ impl Shape {
     pub fn print(&self) {
         for l in self.shape {
             for c in l {
-                print!("{c}");
+                print!("{}", if c > 0 { "#" } else { "." });
             }
             println!("");
             // println!("{l:?}");
@@ -40,46 +40,77 @@ fn main() {
             _ => panic!("Woot"),
         }
     }
-    part1(&pushes)
+    // part1(&pushes, false);
+    run(&pushes, true);
 }
 
-const CAVE_MAX_HEIGHT: usize = (1 + 3 + 3 + 4 + 2) * (2022 + 3) / 5 + 100; // add 100 for some margin above.
-const CAVE_HEIGHT: usize = CAVE_MAX_HEIGHT;
+const CAVE_MAX_HEIGHT: usize = (1 + 3 + 3 + 4 + 2) * (2022 + 3) / 5;
+const CAVE_HEIGHT: usize = CAVE_MAX_HEIGHT + 100; // add 100 for some margin above.
 const CAVE_WIDTH: usize = 7;
 
-fn part1(pushes: &Vec<i32>) {
+fn run(pushes: &Vec<i32>, part2: bool) {
     let mut cave: [[u8; CAVE_WIDTH]; CAVE_HEIGHT] = [[0u8; CAVE_WIDTH]; CAVE_HEIGHT];
     let mut push_idx = 0;
     let mut highest_point = 0;
 
-    for num_block in 0..2022 {
+    let mut store_offset = 0;
+    let max = if part2 { 1000000000000 } else { 2022 };
+    for num_block in 0..max {
+        if num_block % 1000000 == 0 {
+            println!("{:5}", (num_block as f64) / (max as f64));
+        }
+        if part2 && highest_point > CAVE_MAX_HEIGHT {
+            const SHIFT_DOWN: usize = 2000;
+            // Shift everything down.
+            for i in 0..CAVE_HEIGHT {
+                for w in 0..CAVE_WIDTH {
+                    let cell = if i + SHIFT_DOWN < CAVE_HEIGHT {
+                        cave[i + SHIFT_DOWN][w]
+                    } else {
+                        0
+                    };
+                    cave[i][w] = cell;
+                }
+            }
+            store_offset += SHIFT_DOWN;
+            highest_point -= SHIFT_DOWN;
+        }
+
+        if num_block > 5 {
+            // break;
+        }
         // Spawn block
         let mut shape = get_shape(num_block % 5);
         let mut shape_y_offset = highest_point + 3; // spawn block 3 steps above last highest
-        println!();
-        if num_block > 10 {
-            return;
-        }
-        println!("The cave now looks like this:");
-        for row in &(cave[(highest_point+2)..0]) {
-            println!("{row:?}");
-        }
+
+        // println!("Block starting at {shape_y_offset}");
+
         loop {
             // push
-            shape = push_shape(*(&pushes[push_idx]), &mut shape, &cave, shape_y_offset);
-
+            // println!(
+            //     "Pushing block number {num_block} to the {}.",
+            //     if *(&pushes[(push_idx % pushes.len())]) > 0 {
+            //         "right"
+            //     } else {
+            //         "left"
+            //     }
+            // );
+            shape = push_shape(
+                *(&pushes[(push_idx % pushes.len())]),
+                &mut shape,
+                &cave,
+                shape_y_offset,
+            );
             push_idx += 1;
-            if push_idx >= pushes.len() {
-                push_idx = 0;
-            }
             // if below is rock
             if !can_move(&shape, &cave, shape_y_offset, 0, -1) {
+                // println!("The rock is coming to rest at {shape_y_offset}!");
                 for (row_idx, row) in shape.shape.iter().enumerate() {
                     for (col_idx, cell) in row.iter().enumerate() {
                         if *cell == 1 {
                             cave[row_idx + shape_y_offset][col_idx] = 1;
-                            if row_idx + shape_y_offset > highest_point {
-                                highest_point = row_idx + shape_y_offset;
+                            if row_idx + shape_y_offset + 1 > highest_point {
+                                highest_point = row_idx + shape_y_offset + 1; // Actaully 1 more than idx
                             }
                         }
                     }
@@ -91,21 +122,25 @@ fn part1(pushes: &Vec<i32>) {
             }
         }
 
-        // for y in (highest_point)..=0 {
-        //     print!("|");
-        //     for cell in cave[y] {
-        //         if cell == 1 {
-        //             print!("#");
+        // println!("After the rock comes to rest the shape_y_offset = {shape_y_offset}");
+        // println!("The cave now looks like this:");
+        // for row in (&cave[0..(highest_point + 3)]).iter().rev() {
+        //     for c in row {
+        //         if *c == 0 {
+        //             print!(".")
         //         } else {
-        //             print!(".");
+        //             print!("#");
         //         }
         //     }
-        //     println!("|");
+        //     println!("");
         // }
+        // println!("");
     }
-
-    println!("Part1: {highest_point}");
-    // 2701 too low
+    if part2 {
+        println!("Part2: {}", highest_point + store_offset);
+    } else {
+        println!("Part1: {highest_point}");
+    }
 }
 
 fn push_shape(
@@ -120,15 +155,24 @@ fn push_shape(
         return clone_dst; // Can't move right!
     }
 
+    // println!("Clone before:");
+    // clone_dst.print();
+
+    for x in 0..SHAPE_WIDTH {
+        for y in 0..SHAPE_HEIGHT {
+            clone_dst.shape[y][x] = 0;
+        }
+    }
+
     for x in 0..SHAPE_WIDTH {
         for y in 0..SHAPE_HEIGHT {
             let cx = x as i32 + push;
-            if cx < 0 || cx >= SHAPE_WIDTH as i32 {
-                continue;
+            if cx >= 0 && cx < SHAPE_WIDTH as i32 {
+                clone_dst.shape[y][cx as usize] = shape.shape[y][x];
             }
-            clone_dst.shape[y][cx as usize] = shape.shape[y][x];
         }
     }
+    // println!("Clone after:");
     // clone_dst.print();
     clone_dst
 }
@@ -145,6 +189,7 @@ fn can_move(
     }
 
     if xdiff != 0 {
+        // Check if leftmost and rightmost edge of shape collides with walls
         let col = shape.col(0);
         for c in col {
             if c != 0 && xdiff < 0 {
@@ -157,24 +202,34 @@ fn can_move(
                 return false; // Cant move right
             }
         }
-        return true; // we don't check below
     }
 
     for (row_idx, row) in shape.shape.iter().enumerate() {
         for (col_idx, cell) in row.iter().enumerate() {
-            let y_below = row_idx as i32 + shape_y_offset as i32 - 1;
+            if ydiff != 0 {
+                let y_below = row_idx as i32 + shape_y_offset as i32 - 1;
 
-            if *cell == 1 && y_below < 0 {
-                return false; // The ground is below!
-            }
-            if y_below < 0 {
-                // We're checking underground but its ok
-                continue;
-            }
-
-            let cave_cell = cave[y_below as usize][col_idx];
-            if cave_cell == 1 && *cell == 1 {
-                return false; // They would collide.
+                if *cell == 1 && y_below < 0 {
+                    return false; // The ground is below!
+                }
+                if y_below < 0 {
+                    // We're checking underground but its ok
+                    continue;
+                }
+                let cave_cell = cave[y_below as usize][col_idx];
+                if cave_cell == 1 && *cell == 1 {
+                    return false; // They would collide.
+                }
+            } else {
+                let x_side = col_idx as i32 + xdiff;
+                if x_side < 0 || x_side >= SHAPE_WIDTH as i32 {
+                    continue;
+                }
+                let cave_cell = cave[(row_idx + shape_y_offset)][x_side as usize];
+                if *cell == 1 && cave_cell == 1 {
+                    // Collides with cave.
+                    return false;
+                }
             }
         }
     }
